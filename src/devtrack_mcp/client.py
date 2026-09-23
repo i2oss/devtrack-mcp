@@ -22,6 +22,7 @@ from devtrack_mcp.config import DevTrackConfig
 from devtrack_mcp.models import (
     FieldValue,
     StandardQueryCondition,
+    SubProjectRequest,
     TaskCreateRequest,
     TaskGetRequest,
     TaskQueryRequest,
@@ -146,3 +147,20 @@ class DevTrackClient:
             PageSize=page_size,
         )
         return await self._request("POST", "/api/Task/Query", json=req.model_dump())
+
+    # -- SubProject endpoints -------------------------------------------
+
+    async def get_subproject(self, project_id: int, subproject_id: int) -> dict[str, Any]:
+        """Fetch a single subproject's info by ID."""
+        req = SubProjectRequest(ProjectId=project_id, SubProjectId=subproject_id)
+        return await self._request("POST", "/api/SubProject", json=req.model_dump())
+
+    async def list_subprojects(self, project_id: int, subproject_id: int = 0) -> Any:
+        """Fetch a subproject and its children as a tree.
+
+        subproject_id=0 (the default) returns the tree from the project's
+        root. See the caveat on models.SubProjectRequest -- the tree's
+        nesting shape is inferred, not independently confirmed.
+        """
+        req = SubProjectRequest(ProjectId=project_id, SubProjectId=subproject_id)
+        return await self._request("POST", "/api/SubProject/GetTree", json=req.model_dump())

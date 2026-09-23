@@ -116,6 +116,45 @@ async def test_query_tasks_sends_standard_query_condition_shape(client: DevTrack
 
 
 @respx.mock
+async def test_get_subproject_returns_data(client: DevTrackClient):
+    respx.post(f"{BASE}/api/SubProject").mock(
+        return_value=Response(
+            200,
+            json={
+                "Success": True,
+                "Error": None,
+                "Data": {"SubProjectId": 2, "SubProjectName": "Feature Development", "ProjectId": 1},
+            },
+        )
+    )
+    result = await client.get_subproject(project_id=1, subproject_id=2)
+    assert result["SubProjectId"] == 2
+    assert result["SubProjectName"] == "Feature Development"
+
+
+@respx.mock
+async def test_list_subprojects_returns_tree(client: DevTrackClient):
+    route = respx.post(f"{BASE}/api/SubProject/GetTree").mock(
+        return_value=Response(
+            200,
+            json={
+                "Success": True,
+                "Error": None,
+                "Data": {
+                    "SubProjectId": 0,
+                    "SubProjectName": "Root",
+                    "Children": [{"SubProjectId": 2, "SubProjectName": "Feature Development", "Children": []}],
+                },
+            },
+        )
+    )
+    result = await client.list_subprojects(project_id=1)
+    assert result["Children"][0]["SubProjectId"] == 2
+    payload = json.loads(route.calls.last.request.content)
+    assert payload == {"ProjectId": 1, "SubProjectId": 0}
+
+
+@respx.mock
 async def test_http_error_raised_as_devtrack_error(client: DevTrackClient):
     respx.post(f"{BASE}/api/Task/Get").mock(return_value=Response(500))
     with pytest.raises(DevTrackAPIError, match="HTTP 500"):

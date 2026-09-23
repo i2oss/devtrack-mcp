@@ -9,7 +9,7 @@ Part of a series of MCP portfolio projects — see also
 
 ## What it does (v1)
 
-Four core tools, backed by DevTrack's REST API:
+Six tools, backed by DevTrack's REST API:
 
 | Tool | DevTrack endpoint | Purpose |
 |---|---|---|
@@ -17,15 +17,26 @@ Four core tools, backed by DevTrack's REST API:
 | `get_task` | `POST /api/Task/Get` | Fetch a task's fields, comments, time tracking |
 | `update_task` | `POST /api/Task/Update` | Edit fields and/or move a task through a workflow transition |
 | `query_tasks` | `POST /api/Task/Query` | Search tasks in a project by filter conditions |
+| `get_subproject` | `POST /api/SubProject` | Fetch a single subproject's info |
+| `list_subprojects` | `POST /api/SubProject/GetTree` | Browse a project's subproject structure as a tree |
 
-Project/subproject browsing, reporting tools (sprint scores, work
-summaries), and a SKILL.md that chains these into a workflow (e.g.
-triaging a batch of new issues) are backlog for v2 — same "core first,
-then expand" approach as the S1000D MCP project.
+Reporting tools (sprint scores, work summaries) and a SKILL.md that
+chains these into a workflow (e.g. triaging a batch of new issues) are
+backlog for v2 — same "core first, then expand" approach as the S1000D
+MCP project.
 
 `query_tasks` takes a simple `keyword` for free-text search, or a full
 DevTrack `condition` dict (status, owner, date ranges, custom fields —
 DevTrack's `StandardQueryCondition` shape) for anything more targeted.
+
+**Note:** there's no `list_projects` tool. DevTrack's classic REST API
+has no confirmed endpoint for enumerating all projects a token can
+access — every endpoint here takes a `ProjectId` you already have
+(typically read off the DevTrack web UI's URL). A separate "Project One"
+family (`api/projectone/P1Projects`) looks like it might cover this, but
+its docs page — like `Task/Query`'s before it — has been unreachable
+while building this, and its relationship to the classic endpoints used
+here is unconfirmed. Left as backlog rather than guessed at.
 
 ## Why it points at a public sandbox by default
 
@@ -102,6 +113,11 @@ envelope. `models.py` implements that confirmed `StandardQueryCondition`
 shape (keyword, status, owner, issue type, date/numeric/text/dropdown
 field filters). High confidence, but still worth a final check against a
 real token or Task/Query's own page directly if you hit a mismatch.
+
+`SubProject/GetTree`'s docs page has the same unreachable-page issue.
+Its request binder is confirmed (reused from the plain `SubProject`
+endpoint, which does load), but the tree response's exact nesting shape
+under `Children` is inferred, not independently confirmed.
 
 ## License
 

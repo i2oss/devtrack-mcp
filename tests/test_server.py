@@ -66,3 +66,30 @@ async def test_query_tasks_tool_folds_keyword_into_condition(monkeypatch):
     payload = json.loads(route.calls.last.request.content)
     assert payload["Condition"]["Keyword"] == "login bug"
     assert payload["Condition"]["Status"] == [{"Id": 1, "Option": 2}]
+
+
+@respx.mock
+async def test_get_subproject_tool_success(monkeypatch):
+    monkeypatch.setenv("DEVTRACK_TOKEN", "test-token")
+    respx.post(f"{BASE}/api/SubProject").mock(
+        return_value=Response(
+            200,
+            json={"Success": True, "Error": None, "Data": {"SubProjectId": 2, "SubProjectName": "QA"}},
+        )
+    )
+    result = await server.get_subproject(project_id=1, subproject_id=2)
+    assert result == {"SubProjectId": 2, "SubProjectName": "QA"}
+
+
+@respx.mock
+async def test_list_subprojects_tool_defaults_to_root(monkeypatch):
+    monkeypatch.setenv("DEVTRACK_TOKEN", "test-token")
+    route = respx.post(f"{BASE}/api/SubProject/GetTree").mock(
+        return_value=Response(
+            200, json={"Success": True, "Error": None, "Data": {"SubProjectId": 0, "Children": []}}
+        )
+    )
+    result = await server.list_subprojects(project_id=1)
+    assert result == {"tree": {"SubProjectId": 0, "Children": []}}
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["SubProjectId"] == 0

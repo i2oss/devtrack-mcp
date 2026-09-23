@@ -1,8 +1,10 @@
-"""MCP server exposing DevTrack task/issue operations as tools.
+"""MCP server exposing DevTrack task/issue and subproject operations as tools.
 
-v1 scope is intentionally narrow: create, get, update and query tasks.
-Project/subproject browsing, reporting, and workflow-chaining SKILL.md
-files are tracked as backlog for a v2 (see README).
+Core v1 scope: create, get, update and query tasks. Subproject browsing
+(get_subproject, list_subprojects) rounds it out. Reporting tools and a
+workflow-chaining SKILL.md are still backlog for v2 (see README) -- as is
+project-level enumeration (list_projects), which DevTrack's classic REST
+API has no confirmed endpoint for; see the note in models.py.
 """
 
 from __future__ import annotations
@@ -17,9 +19,13 @@ from devtrack_mcp.config import DevTrackConfig
 mcp = MCPServer(
     "devtrack",
     instructions=(
-        "Tools for reading and managing tasks/issues in TechExcel DevTrack. "
-        "Every tool needs a DevTrack ProjectId; ask the user for it if you "
-        "don't already know it. FieldIds/FieldValues are DevTrack's internal "
+        "Tools for reading and managing tasks/issues and subprojects in "
+        "TechExcel DevTrack. Every tool needs a DevTrack ProjectId; ask the "
+        "user for it if you don't already know it (DevTrack has no API for "
+        "listing all projects -- it's usually read off the DevTrack web UI "
+        "URL). Use list_subprojects to discover a project's subproject "
+        "structure before filing or querying issues within a specific "
+        "subproject. FieldIds/FieldValues are DevTrack's internal "
         "custom-field IDs (e.g. 101=Title, 108=Owner, 601=Status) and vary "
         "per DevTrack project configuration -- ask the user or use get_task "
         "on a known task to learn the field IDs in use before writing to them."
@@ -131,6 +137,41 @@ async def query_tasks(
                 project_id, merged_condition, field_ids, page_index, page_size
             )
             return {"results": result}
+        except DevTrackAPIError as exc:
+            return {"error": str(exc), "error_code": exc.error_code}
+
+
+@mcp.tool()
+async def get_subproject(project_id: int, subproject_id: int) -> dict[str, Any]:
+    """Fetch a single subproject's info (name, status, manager, hierarchy path, etc).
+
+    Args:
+        project_id: DevTrack project ID the subproject belongs to.
+        subproject_id: The subproject ID to fetch.
+    """
+    async with _client() as client:
+        try:
+            return await client.get_subproject(project_id, subproject_id)
+        except DevTrackAPIError as exc:
+            return {"error": str(exc), "error_code": exc.error_code}
+
+
+@mcp.tool()
+async def list_subprojects(project_id: int, subproject_id: int = 0) -> dict[str, Any]:
+    """List a project's subproject structure as a tree.
+
+    Useful for discovering what subprojects exist in a DevTrack project
+    (and their IDs) before filing or querying tasks within one.
+
+    Args:
+        project_id: DevTrack project ID to browse.
+        subproject_id: Root subproject to start from; 0 (default) starts
+            from the project's top level.
+    """
+    async with _client() as client:
+        try:
+            tree = await client.list_subprojects(project_id, subproject_id)
+            return {"tree": tree}
         except DevTrackAPIError as exc:
             return {"error": str(exc), "error_code": exc.error_code}
 

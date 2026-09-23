@@ -126,3 +126,32 @@ class TaskQueryRequest(BaseModel):
     FieldIds: list[int] = Field(default_factory=list)
     PageIndex: int = 1
     PageSize: int = 25
+
+
+# -- SubProject endpoints ------------------------------------------------
+# SubProjectRequest / SubProjectInfoModel confirmed against the live API
+# Explorer (.../Help/Api/POST-api-SubProject). SubProject/GetTree's own
+# docs page has been unreachable (same intermittent-page issue as
+# Task/Query) -- GetTreeRequest below reuses the confirmed
+# ProjectId+SubProjectId binder shape (GetTree's one-line description,
+# "Get the SubProject and its child SubProjects based on SubProject ID",
+# is nearly identical to the confirmed single-SubProject endpoint's), and
+# the tree's node shape is assumed to extend SubProjectInfoModel with a
+# Children list -- standard DevTrack/REST tree convention, but NOT
+# independently confirmed. Verify against a live token before relying on
+# the nesting shape specifically.
+#
+# Note: DevTrack's classic REST API has no confirmed "list all projects"
+# endpoint -- every endpoint takes a ProjectId you already have (typically
+# read off the DevTrack web UI/URL). The only lead for project enumeration
+# is the separate "Project One" family (api/projectone/P1Projects), whose
+# docs page has also been unreachable and whose relationship to the
+# classic Task/SubProject endpoints used elsewhere in this client is
+# unconfirmed -- left as backlog rather than guessed at.
+
+
+class SubProjectRequest(BaseModel):
+    ProjectId: int
+    SubProjectId: int = 0
+    """0 means "root" when used for SubProject/GetTree; a real SubProject/Get
+    call needs a genuine SubProjectId."""
