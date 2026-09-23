@@ -21,6 +21,7 @@ else:
 from devtrack_mcp.config import DevTrackConfig
 from devtrack_mcp.models import (
     FieldValue,
+    StandardQueryCondition,
     TaskCreateRequest,
     TaskGetRequest,
     TaskQueryRequest,
@@ -126,20 +127,20 @@ class DevTrackClient:
     async def query_tasks(
         self,
         project_id: int,
-        conditions: list[dict[str, Any]] | None = None,
+        condition: dict[str, Any] | None = None,
         field_ids: list[int] | None = None,
         page_index: int = 1,
         page_size: int = 25,
     ) -> Any:
-        """Search tasks/issues matching filter conditions.
+        """Search tasks/issues matching a DevTrack StandardQueryCondition.
 
-        See the caveat in models.TaskQueryRequest -- the exact request
-        shape here is inferred and should be verified against a live
-        DevTrack instance.
+        See the caveat in models.TaskQueryRequest for how this shape was
+        derived (high-confidence, assembled from confirmed sibling
+        endpoints -- Task/Query's own docs page has been unreachable).
         """
         req = TaskQueryRequest(
             ProjectId=project_id,
-            Conditions=conditions or [],
+            Condition=StandardQueryCondition(**(condition or {})),
             FieldIds=field_ids or [],
             PageIndex=page_index,
             PageSize=page_size,

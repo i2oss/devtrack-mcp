@@ -23,6 +23,10 @@ summaries), and a SKILL.md that chains these into a workflow (e.g.
 triaging a batch of new issues) are backlog for v2 — same "core first,
 then expand" approach as the S1000D MCP project.
 
+`query_tasks` takes a simple `keyword` for free-text search, or a full
+DevTrack `condition` dict (status, owner, date ranges, custom fields —
+DevTrack's `StandardQueryCondition` shape) for anything more targeted.
+
 ## Why it points at a public sandbox by default
 
 This server ships configured against TechExcel's public
@@ -85,13 +89,19 @@ ruff check .  # lint
 ## A note on the Task/Query request shape
 
 DevTrack's `Task/Create`, `Task/Get` and `Task/Update` request/response
-schemas were confirmed against the live [API
-Explorer](http://trydevsuite.techexcel.com/DevTrackAPI/Help). The
-`Task/Query` docs page timed out while this project was being scaffolded,
-so `TaskQueryRequest` in `models.py` is a best-effort inference from the
-other three endpoints' conventions. If you hit a schema mismatch there,
-check the live Explorer and update `models.py` + `client.py` — that's
-first on the backlog.
+schemas were confirmed directly against the live [API
+Explorer](http://trydevsuite.techexcel.com/DevTrackAPI/Help). `Task/Query`'s
+own docs page has been consistently unreachable (fails to load even on
+repeated tries, while every other endpoint's page loads fine) — but its
+request shape is now backed by two *confirmed* sibling endpoints in the
+same "get tasks by query condition" family, `Task/GetTaskListSummary` and
+`Task/GroupedTaskListByOwner`, which share Task/Query's exact API
+description and both take an identical `ProjectId` + `Condition`
+(DevTrack's `StandardQueryCondition`) + `FieldIds` + `PageIndex`/`PageSize`
+envelope. `models.py` implements that confirmed `StandardQueryCondition`
+shape (keyword, status, owner, issue type, date/numeric/text/dropdown
+field filters). High confidence, but still worth a final check against a
+real token or Task/Query's own page directly if you hit a mismatch.
 
 ## License
 

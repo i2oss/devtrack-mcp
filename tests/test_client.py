@@ -1,3 +1,5 @@
+import json
+
 import pytest
 import respx
 from httpx import Response
@@ -78,10 +80,39 @@ async def test_query_tasks_returns_results(client: DevTrackClient):
         )
     )
     result = await client.query_tasks(
-        project_id=1, conditions=[{"FieldId": 601, "Operator": "=", "Value": "Active"}]
+        project_id=1,
+        condition={
+            "Keyword": "login bug",
+            "Status": [{"Id": 1, "Option": 2}],
+            "Owner": [{"Id": 5, "Option": 1}],
+        },
     )
     assert result["Total"] == 1
     assert result["Items"][0]["TaskId"] == 42
+
+
+@respx.mock
+async def test_query_tasks_sends_standard_query_condition_shape(client: DevTrackClient):
+    """Locks in the StandardQueryCondition request shape (see models.py docstring)."""
+    route = respx.post(f"{BASE}/api/Task/Query").mock(
+        return_value=Response(200, json={"Success": True, "Error": None, "Data": {"Total": 0, "Items": []}})
+    )
+    await client.query_tasks(
+        project_id=7,
+        condition={"Keyword": "bug", "IssueType": [1, 2]},
+        field_ids=[101, 601],
+        page_index=2,
+        page_size=10,
+    )
+    sent = route.calls.last.request
+    payload = json.loads(sent.content)
+    assert payload["ProjectId"] == 7
+    assert payload["Condition"]["Keyword"] == "bug"
+    assert payload["Condition"]["IssueType"] == [1, 2]
+    assert payload["Condition"]["Status"] == []
+    assert payload["FieldIds"] == [101, 601]
+    assert payload["PageIndex"] == 2
+    assert payload["PageSize"] == 10
 
 
 @respx.mock

@@ -98,26 +98,37 @@ async def update_task(
 @mcp.tool()
 async def query_tasks(
     project_id: int,
-    conditions: list[dict[str, Any]] | None = None,
+    keyword: str | None = None,
+    condition: dict[str, Any] | None = None,
     field_ids: list[int] | None = None,
     page_index: int = 1,
     page_size: int = 25,
 ) -> dict[str, Any]:
-    """Search for tasks/issues in a DevTrack project matching filter conditions.
+    """Search for tasks/issues in a DevTrack project.
 
     Args:
         project_id: DevTrack project ID to search within.
-        conditions: List of {"FieldId": int, "Operator": str, "Value": any}
-            filters, e.g. [{"FieldId": 601, "Operator": "=", "Value": "Active"}].
-            Omit to return all tasks (paginated).
+        keyword: Quick free-text search across task fields. For anything
+            beyond a keyword search, use `condition` instead (or together
+            with keyword -- it's folded into the condition as Keyword).
+        condition: A DevTrack StandardQueryCondition dict for advanced
+            filtering, e.g. {"Status": [{"Id": 1, "Option": 2}],
+            "Owner": [{"Id": 5, "Option": 1}], "IssueType": [1, 2],
+            "DateTimeFields": [{"FieldId": 10, "From": "2026-01-01 00:00:00",
+            "To": "2026-12-31 23:59:59"}]}. Status/Owner entries use DevTrack's
+            {"Id": int, "Option": int} shape. Omit entirely to match all
+            tasks in the project (paginated).
         field_ids: Optional list of field IDs to include per result.
         page_index: 1-based page number.
         page_size: Results per page.
     """
+    merged_condition = dict(condition or {})
+    if keyword:
+        merged_condition["Keyword"] = keyword
     async with _client() as client:
         try:
             result = await client.query_tasks(
-                project_id, conditions, field_ids, page_index, page_size
+                project_id, merged_condition, field_ids, page_index, page_size
             )
             return {"results": result}
         except DevTrackAPIError as exc:

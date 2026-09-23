@@ -6,6 +6,8 @@ HTTP layer mocked via respx, rather than spinning up a full MCP client/
 server transport.
 """
 
+import json
+
 import respx
 from httpx import Response
 
@@ -50,3 +52,17 @@ async def test_query_tasks_tool_wraps_results(monkeypatch):
     )
     result = await server.query_tasks(project_id=1)
     assert result == {"results": {"Total": 0, "Items": []}}
+
+
+@respx.mock
+async def test_query_tasks_tool_folds_keyword_into_condition(monkeypatch):
+    monkeypatch.setenv("DEVTRACK_TOKEN", "test-token")
+    route = respx.post(f"{BASE}/api/Task/Query").mock(
+        return_value=Response(200, json={"Success": True, "Error": None, "Data": {"Total": 0, "Items": []}})
+    )
+    await server.query_tasks(
+        project_id=1, keyword="login bug", condition={"Status": [{"Id": 1, "Option": 2}]}
+    )
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["Condition"]["Keyword"] == "login bug"
+    assert payload["Condition"]["Status"] == [{"Id": 1, "Option": 2}]
