@@ -1,10 +1,12 @@
-"""MCP server exposing DevTrack task/issue and subproject operations as tools.
+"""MCP server exposing DevTrack task/issue, subproject and reporting tools.
 
-Core v1 scope: create, get, update and query tasks. Subproject browsing
-(get_subproject, list_subprojects) rounds it out. Reporting tools and a
-workflow-chaining SKILL.md are still backlog for v2 (see README) -- as is
-project-level enumeration (list_projects), which DevTrack's classic REST
-API has no confirmed endpoint for; see the note in models.py.
+Core: create, get, update and query tasks. Subproject browsing
+(get_subproject, list_subprojects) and two reporting tools
+(get_task_list_summary, get_daily_work_summary) round it out. A
+workflow-chaining SKILL.md is still backlog for v2 (see README) -- as is
+project-level enumeration (list_projects) and a few more reporting
+endpoints (MonthlyTaskCount, sprint/period scores), which DevTrack's
+classic REST API has no confirmed schema for; see the notes in models.py.
 """
 
 from __future__ import annotations
@@ -172,6 +174,56 @@ async def list_subprojects(project_id: int, subproject_id: int = 0) -> dict[str,
         try:
             tree = await client.list_subprojects(project_id, subproject_id)
             return {"tree": tree}
+        except DevTrackAPIError as exc:
+            return {"error": str(exc), "error_code": exc.error_code}
+
+
+@mcp.tool()
+async def get_task_list_summary(
+    project_id: int,
+    keyword: str | None = None,
+    condition: dict[str, Any] | None = None,
+    show_story_option: int = 0,
+) -> dict[str, Any]:
+    """Get aggregate metrics for tasks matching a filter: counts, points, time spent/remaining,
+    completion percentage, workload -- a project or team's overall status at a glance, rather
+    than a list of individual tasks.
+
+    Args:
+        project_id: DevTrack project ID to summarize.
+        keyword: Quick free-text filter, folded into `condition` as Keyword.
+        condition: A DevTrack StandardQueryCondition dict to scope the summary
+            (same shape as query_tasks' `condition`) -- e.g. restrict to one
+            owner, status, or subproject. Omit to summarize the whole project.
+        show_story_option: 0 = exclude stories (default), 1 = include all
+            matching stories, 2 = include only parent stories.
+    """
+    merged_condition = dict(condition or {})
+    if keyword:
+        merged_condition["Keyword"] = keyword
+    async with _client() as client:
+        try:
+            return await client.get_task_list_summary(project_id, merged_condition, show_story_option)
+        except DevTrackAPIError as exc:
+            return {"error": str(exc), "error_code": exc.error_code}
+
+
+@mcp.tool()
+async def get_daily_work_summary(project_id: int, date: str, subproject_id: int = 0) -> dict[str, Any]:
+    """Get a single day's finished-work summary for a project (points completed, time spent,
+    workload -- broken out by dev vs. non-dev module).
+
+    Args:
+        project_id: DevTrack project ID.
+        date: The day to summarize, as "YYYY-MM-DD" (a bare date is padded to
+            midnight to match DevTrack's expected datetime format).
+        subproject_id: Restrict to one subproject; 0 (default) covers the
+            whole project.
+    """
+    normalized_date = date if " " in date else f"{date} 00:00:00"
+    async with _client() as client:
+        try:
+            return await client.get_daily_work_summary(project_id, normalized_date, subproject_id)
         except DevTrackAPIError as exc:
             return {"error": str(exc), "error_code": exc.error_code}
 

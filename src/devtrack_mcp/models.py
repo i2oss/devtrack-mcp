@@ -155,3 +155,30 @@ class SubProjectRequest(BaseModel):
     SubProjectId: int = 0
     """0 means "root" when used for SubProject/GetTree; a real SubProject/Get
     call needs a genuine SubProjectId."""
+
+
+# -- Reporting endpoints --------------------------------------------------
+# TaskListSummaryRequest and DailyWorkSummaryRequest are both confirmed
+# directly against the live API Explorer
+# (.../Help/Api/POST-api-Task-GetTaskListSummary and
+# .../Help/Api/POST-api-Task-DailyFinishedWorkSummary).
+#
+# MonthlyTaskCount, PeriodScore/list and SprintScore/list were also on the
+# reporting shortlist, but unlike Task/Query and SubProject/GetTree there
+# was no confirmed sibling endpoint to cross-check their shape against --
+# their docs pages were unreachable with nothing solid to infer from, so
+# they're left as backlog rather than built on a guess.
+
+
+class TaskListSummaryRequest(BaseModel):
+    ProjectId: int
+    ShowStoryOption: int = 0
+    """0 = hide stories, 1 = show all matching stories, 2 = parent stories only."""
+    Condition: StandardQueryCondition = Field(default_factory=StandardQueryCondition)
+
+
+class DailyWorkSummaryRequest(BaseModel):
+    ProjectId: int
+    SubProjectId: int = 0
+    Date: str
+    """DevTrack datetime format, e.g. "2026-09-24 00:00:00"."""

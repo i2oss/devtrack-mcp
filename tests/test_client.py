@@ -155,6 +155,43 @@ async def test_list_subprojects_returns_tree(client: DevTrackClient):
 
 
 @respx.mock
+async def test_get_task_list_summary_returns_metrics(client: DevTrackClient):
+    route = respx.post(f"{BASE}/api/Task/GetTaskListSummary").mock(
+        return_value=Response(
+            200,
+            json={
+                "Success": True,
+                "Error": None,
+                "Data": {"TaskCount": 12, "FinishPercentage": "63%"},
+            },
+        )
+    )
+    result = await client.get_task_list_summary(
+        project_id=1, condition={"Keyword": "bug fix"}, show_story_option=2
+    )
+    assert result["TaskCount"] == 12
+    assert result["FinishPercentage"] == "63%"
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["ProjectId"] == 1
+    assert payload["ShowStoryOption"] == 2
+    assert payload["Condition"]["Keyword"] == "bug fix"
+
+
+@respx.mock
+async def test_get_daily_work_summary_returns_data(client: DevTrackClient):
+    route = respx.post(f"{BASE}/api/Task/DailyFinishedWorkSummary").mock(
+        return_value=Response(
+            200,
+            json={"Success": True, "Error": None, "Data": {"TaskPoints": 15.2, "TimeSpent": "6.0h"}},
+        )
+    )
+    result = await client.get_daily_work_summary(project_id=1, date="2026-09-24 00:00:00")
+    assert result["TaskPoints"] == 15.2
+    payload = json.loads(route.calls.last.request.content)
+    assert payload == {"ProjectId": 1, "SubProjectId": 0, "Date": "2026-09-24 00:00:00"}
+
+
+@respx.mock
 async def test_http_error_raised_as_devtrack_error(client: DevTrackClient):
     respx.post(f"{BASE}/api/Task/Get").mock(return_value=Response(500))
     with pytest.raises(DevTrackAPIError, match="HTTP 500"):

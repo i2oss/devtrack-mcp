@@ -20,11 +20,13 @@ else:
 
 from devtrack_mcp.config import DevTrackConfig
 from devtrack_mcp.models import (
+    DailyWorkSummaryRequest,
     FieldValue,
     StandardQueryCondition,
     SubProjectRequest,
     TaskCreateRequest,
     TaskGetRequest,
+    TaskListSummaryRequest,
     TaskQueryRequest,
     TaskUpdateRequest,
 )
@@ -164,3 +166,28 @@ class DevTrackClient:
         """
         req = SubProjectRequest(ProjectId=project_id, SubProjectId=subproject_id)
         return await self._request("POST", "/api/SubProject/GetTree", json=req.model_dump())
+
+    # -- Reporting endpoints ----------------------------------------------
+
+    async def get_task_list_summary(
+        self,
+        project_id: int,
+        condition: dict[str, Any] | None = None,
+        show_story_option: int = 0,
+    ) -> dict[str, Any]:
+        """Fetch aggregate task/story metrics (counts, points, time, completion %) for a project."""
+        req = TaskListSummaryRequest(
+            ProjectId=project_id,
+            ShowStoryOption=show_story_option,
+            Condition=StandardQueryCondition(**(condition or {})),
+        )
+        return await self._request("POST", "/api/Task/GetTaskListSummary", json=req.model_dump())
+
+    async def get_daily_work_summary(
+        self, project_id: int, date: str, subproject_id: int = 0
+    ) -> dict[str, Any]:
+        """Fetch a single day's finished-work summary for a project/subproject."""
+        req = DailyWorkSummaryRequest(ProjectId=project_id, SubProjectId=subproject_id, Date=date)
+        return await self._request(
+            "POST", "/api/Task/DailyFinishedWorkSummary", json=req.model_dump()
+        )

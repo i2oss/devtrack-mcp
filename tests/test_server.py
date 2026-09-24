@@ -93,3 +93,39 @@ async def test_list_subprojects_tool_defaults_to_root(monkeypatch):
     assert result == {"tree": {"SubProjectId": 0, "Children": []}}
     payload = json.loads(route.calls.last.request.content)
     assert payload["SubProjectId"] == 0
+
+
+@respx.mock
+async def test_get_task_list_summary_tool_folds_keyword(monkeypatch):
+    monkeypatch.setenv("DEVTRACK_TOKEN", "test-token")
+    route = respx.post(f"{BASE}/api/Task/GetTaskListSummary").mock(
+        return_value=Response(200, json={"Success": True, "Error": None, "Data": {"TaskCount": 5}})
+    )
+    result = await server.get_task_list_summary(project_id=1, keyword="regression")
+    assert result == {"TaskCount": 5}
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["Condition"]["Keyword"] == "regression"
+    assert payload["ShowStoryOption"] == 0
+
+
+@respx.mock
+async def test_get_daily_work_summary_tool_pads_bare_date(monkeypatch):
+    monkeypatch.setenv("DEVTRACK_TOKEN", "test-token")
+    route = respx.post(f"{BASE}/api/Task/DailyFinishedWorkSummary").mock(
+        return_value=Response(200, json={"Success": True, "Error": None, "Data": {"TaskPoints": 1.0}})
+    )
+    result = await server.get_daily_work_summary(project_id=1, date="2026-09-24")
+    assert result == {"TaskPoints": 1.0}
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["Date"] == "2026-09-24 00:00:00"
+
+
+@respx.mock
+async def test_get_daily_work_summary_tool_keeps_full_datetime(monkeypatch):
+    monkeypatch.setenv("DEVTRACK_TOKEN", "test-token")
+    route = respx.post(f"{BASE}/api/Task/DailyFinishedWorkSummary").mock(
+        return_value=Response(200, json={"Success": True, "Error": None, "Data": {}})
+    )
+    await server.get_daily_work_summary(project_id=1, date="2026-09-24 15:30:00")
+    payload = json.loads(route.calls.last.request.content)
+    assert payload["Date"] == "2026-09-24 15:30:00"

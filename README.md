@@ -9,7 +9,7 @@ Part of a series of MCP portfolio projects — see also
 
 ## What it does (v1)
 
-Six tools, backed by DevTrack's REST API:
+Eight tools, backed by DevTrack's REST API:
 
 | Tool | DevTrack endpoint | Purpose |
 |---|---|---|
@@ -19,11 +19,14 @@ Six tools, backed by DevTrack's REST API:
 | `query_tasks` | `POST /api/Task/Query` | Search tasks in a project by filter conditions |
 | `get_subproject` | `POST /api/SubProject` | Fetch a single subproject's info |
 | `list_subprojects` | `POST /api/SubProject/GetTree` | Browse a project's subproject structure as a tree |
+| `get_task_list_summary` | `POST /api/Task/GetTaskListSummary` | Aggregate metrics for tasks matching a filter — counts, points, time, completion % |
+| `get_daily_work_summary` | `POST /api/Task/DailyFinishedWorkSummary` | One day's finished-work summary for a project/subproject |
 
-Reporting tools (sprint scores, work summaries) and a SKILL.md that
-chains these into a workflow (e.g. triaging a batch of new issues) are
-backlog for v2 — same "core first, then expand" approach as the S1000D
-MCP project.
+A SKILL.md that chains these into a workflow (e.g. triaging a batch of
+new issues) is backlog for v2 — same "core first, then expand" approach
+as the S1000D MCP project. A few more reporting endpoints
+(`MonthlyTaskCount`, sprint/period scores) are backlog too — see the note
+below on why those two specifically got built and the others didn't.
 
 `query_tasks` takes a simple `keyword` for free-text search, or a full
 DevTrack `condition` dict (status, owner, date ranges, custom fields —
@@ -118,6 +121,20 @@ real token or Task/Query's own page directly if you hit a mismatch.
 Its request binder is confirmed (reused from the plain `SubProject`
 endpoint, which does load), but the tree response's exact nesting shape
 under `Children` is inferred, not independently confirmed.
+
+## On the reporting tools specifically
+
+`Task/GetTaskListSummary` and `Task/DailyFinishedWorkSummary` both loaded
+fine and are fully confirmed against the live API Explorer — full request
+and response schemas, no inference involved.
+
+`MonthlyTaskCount`, `PeriodScore/list` and `SprintScore/list` were also
+candidates, but their docs pages hit the same unreachable-page issue as
+Task/Query — and unlike Task/Query (which had `GetTaskListSummary` and
+`GroupedTaskListByOwner` as confirmed siblings to cross-check against),
+there was no working sibling endpoint in the scoring family to infer
+their shape from. Rather than guess with nothing to corroborate it
+against, those three are left as backlog.
 
 ## License
 
