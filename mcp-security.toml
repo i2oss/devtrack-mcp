@@ -1,0 +1,18 @@
+# Security-suite config for devtrack-mcp. Consumed by mcp-security-suite in CI
+# (see .github/workflows/security.yml).
+
+[server]
+command = "devtrack-mcp"        # console script, on PATH inside the uv venv
+args = []
+timeout = 12.0
+# DevTrack tools call an external REST API. Point them at a dead local port so
+# CI exercises input validation and error handling WITHOUT ever reaching (or
+# writing to) a real DevTrack backend. No token in CI.
+env = { DEVTRACK_BASE_URL = "http://127.0.0.1:9/DevTrackAPI", DEVTRACK_TOKEN = "" }
+
+[gate]
+fail_on = "high"               # fail on any un-waived high/critical finding
+
+# No waivers: the scan reports 0 findings. DevTrack's tools use typed
+# (pydantic) parameters, catch API errors, and return structured error dicts
+# without leaking the token or internals.
